@@ -1,0 +1,115 @@
+:root{
+  --bordeaux:#7a1f3d; --bordeaux-fonce:#5c1630; --rose-pale:#f7eef1;
+  --fond:#f5f4f6; --carte:#ffffff; --texte:#231d20; --doux:#6d6468; --trait:#e4dfe2;
+  --present:#2e7d4f; --absent:#c0392b; --excuse:#b7791f;
+  --rayon:10px;
+  --titre:'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --corps:'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--fond);color:var(--texte);font-family:var(--corps);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+a{color:var(--bordeaux)}
+:focus-visible{outline:3px solid var(--bordeaux);outline-offset:2px}
+
+.entete{background:var(--bordeaux);color:#fff;padding:.7rem 1rem}
+.entete-in{max-width:880px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.marque{font-family:var(--titre);font-weight:700;font-size:1.35rem;letter-spacing:.02em;color:#fff;text-decoration:none}
+.marque span{font-weight:500;opacity:.8}
+.entete nav a{color:#fff;text-decoration:none;font-size:.95rem;margin-left:1rem;opacity:.9}
+.entete nav a:hover{opacity:1;text-decoration:underline}
+
+main{max-width:880px;margin:0 auto;padding:1.25rem 1rem 6rem}
+h1{font-family:var(--titre);font-weight:700;font-size:2rem;line-height:1.1;margin:.2rem 0 .3rem}
+h2{font-family:var(--titre);font-weight:600;font-size:1.35rem;margin:1.8rem 0 .6rem}
+.sous{color:var(--doux);margin:0 0 1rem}
+.retour{display:inline-block;margin-bottom:.6rem;font-size:.95rem;text-decoration:none}
+
+.carte{background:var(--carte);border:1px solid var(--trait);border-radius:var(--rayon);padding:1rem}
+.pile>*+*{margin-top:.6rem}
+
+.flash{border-radius:var(--rayon);padding:.75rem 1rem;margin-bottom:1rem;border:1px solid}
+.flash-success{background:#eaf5ee;border-color:#b9dcc6;color:#1f5a38}
+.flash-danger{background:#fbecea;border-color:#efc2bc;color:#8a261b}
+.flash-warning{background:#fdf5e6;border-color:#f0d9a8;color:#7a5412}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;font:600 1rem var(--corps);
+  padding:.65rem 1.1rem;border-radius:var(--rayon);border:2px solid var(--bordeaux);background:var(--bordeaux);
+  color:#fff;text-decoration:none;cursor:pointer;min-height:44px}
+.btn:hover{background:var(--bordeaux-fonce);border-color:var(--bordeaux-fonce)}
+.btn-ligne{background:transparent;color:var(--bordeaux)}
+.btn-ligne:hover{background:var(--rose-pale);color:var(--bordeaux)}
+.btn-danger{background:transparent;border-color:var(--absent);color:var(--absent)}
+.btn-danger:hover{background:#fbecea;border-color:var(--absent)}
+.btn-lien{background:none;border:none;color:var(--doux);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+.btn-large{width:100%;font-size:1.1rem;min-height:52px}
+
+label{display:block;font-weight:600;margin-bottom:.25rem}
+input[type=text],input[type=password],input[type=date],input[type=number],input[type=search],select{
+  width:100%;font:inherit;padding:.6rem .7rem;border:1px solid #cfc7cb;border-radius:8px;background:#fff;min-height:44px}
+.champ{margin-bottom:1rem}
+.aide{color:var(--doux);font-size:.9rem;margin-top:.25rem}
+.grille2{display:grid;grid-template-columns:1fr 1fr;gap:0 1rem}
+@media(max-width:560px){.grille2{grid-template-columns:1fr}}
+
+/* Accueil : saisie du code */
+.code-bloc{text-align:center;padding:1.6rem 1rem}
+.code-bloc input{font-family:var(--titre);font-size:2.4rem;letter-spacing:.35em;text-align:center;max-width:14rem;margin:0 auto .9rem;display:block;padding-left:.35em}
+
+/* Listes de cours */
+.cours-lien{display:flex;justify-content:space-between;align-items:center;gap:1rem;text-decoration:none;color:inherit}
+.cours-lien:hover .cours-nom{color:var(--bordeaux)}
+.cours-nom{font-family:var(--titre);font-weight:600;font-size:1.3rem;line-height:1.2}
+.meta{color:var(--doux);font-size:.92rem}
+.pastille{display:inline-block;font-size:.8rem;font-weight:600;padding:.1rem .5rem;border-radius:99px;background:var(--rose-pale);color:var(--bordeaux)}
+.pastille.inactif{background:#eee;color:#777}
+
+/* Tableaux */
+.tableau-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th{text-align:left;font-weight:600;color:var(--doux);border-bottom:2px solid var(--trait);padding:.5rem .6rem;white-space:nowrap}
+td{border-bottom:1px solid var(--trait);padding:.55rem .6rem;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.taux-bas{color:var(--absent);font-weight:600}
+
+.s-P{color:var(--present);font-weight:600}.s-A{color:var(--absent);font-weight:600}.s-E{color:var(--excuse);font-weight:600}
+
+.alerte{border-left:4px solid var(--absent);background:#fff}
+.alerte li{margin:.2rem 0}
+
+/* ── Écran d'appel ── */
+.appel-date{display:flex;gap:.5rem;align-items:end;margin-bottom:1rem}
+.appel-date .champ{flex:1;margin:0}
+.appel-liste{list-style:none;margin:0;padding:0;background:var(--carte);border:1px solid var(--trait);border-radius:var(--rayon)}
+.appel-ligne{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.55rem .75rem;border-bottom:1px solid var(--trait)}
+.appel-ligne:last-child{border-bottom:none}
+.appel-nom{min-width:0;font-weight:500;line-height:1.25}
+.appel-nom b{font-weight:700}
+.segments{display:flex;flex-shrink:0;border:1px solid #cfc7cb;border-radius:9px;overflow:hidden}
+.segments input{position:absolute;opacity:0;pointer-events:none}
+.segments label{margin:0;font-weight:700;min-width:46px;min-height:44px;display:flex;align-items:center;justify-content:center;
+  padding:0 .6rem;cursor:pointer;color:var(--doux);background:#fff;border-left:1px solid #cfc7cb;user-select:none}
+.segments label:first-of-type{border-left:none}
+.segments .mot{display:none}
+@media(min-width:520px){.segments .mot{display:inline;font-weight:600;margin-left:.15rem}.segments .lettre{display:none}}
+.segments input:focus-visible+label{outline:3px solid var(--bordeaux);outline-offset:-3px}
+.segments input[value=P]:checked+label{background:var(--present);color:#fff}
+.segments input[value=A]:checked+label{background:var(--absent);color:#fff}
+.segments input[value=E]:checked+label{background:var(--excuse);color:#fff}
+.appel-ligne.est-A .appel-nom{color:var(--absent)}
+.appel-ligne.est-E .appel-nom{color:var(--excuse)}
+
+/* Barre de décompte, collée en bas : l'élément fort de l'appli */
+.decompte{position:fixed;left:0;right:0;bottom:0;background:var(--texte);color:#fff;padding:.6rem 1rem calc(.6rem + env(safe-area-inset-bottom));z-index:10}
+.decompte-in{max-width:880px;margin:0 auto;display:flex;align-items:center;gap:1rem}
+.compteurs{display:flex;gap:1.1rem;flex:1}
+.compteur{display:flex;flex-direction:column;line-height:1}
+.compteur b{font-family:var(--titre);font-size:2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.compteur small{font-size:.75rem;opacity:.8;margin-top:.15rem}
+.compteur.P b{color:#7fd6a0}.compteur.A b{color:#ff9a8f}.compteur.E b{color:#f3c46b}
+.decompte .btn{background:#fff;color:var(--texte);border-color:#fff}
+.decompte .btn:hover{background:var(--rose-pale)}
+
+.vide{text-align:center;color:var(--doux);padding:2rem 1rem}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
