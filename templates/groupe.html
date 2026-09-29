@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block titre %}{{ grp.label }}{% endblock %}
+{% block main_class %}large{% endblock %}
+{% block style %}<style>
+.tete{border-left:8px solid var(--c);padding:2px 0 2px 14px;margin:0 0 18px}.tete h1{margin:0}
+.deux{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:800px){.deux{grid-template-columns:1fr}}
+.tab{overflow-x:auto;background:#fff;border:1px solid var(--trait);border-radius:var(--r)}
+table{border-collapse:collapse;font-size:14px;min-width:100%}
+th,td{padding:7px 9px;border-bottom:1px solid var(--trait);text-align:center;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:#fff}
+th{color:var(--doux);font-weight:600;font-size:12px}
+.p{color:var(--ok);font-weight:700}.a{color:#C0C6D0}
+.x{border:0;background:none;color:var(--err);cursor:pointer;font:inherit;padding:0 4px}
+</style>{% endblock %}
+{% block contenu %}
+<p><a href="{{ url_for('admin_accueil') }}">‹ Tous les cours</a></p>
+<div class="tete" style="--c:{{ grp.couleur }}">
+  <h1>{{ grp.label }}</h1>
+  <p class="sous" style="margin:2px 0 0">{% for c in grp.creneaux %}{{ ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'][c.jour] }} {{ c.debut }}–{{ c.fin }} ({{ c.encadrants|join(', ') }}){% if not loop.last %} ; {% endif %}{% endfor %}</p>
+</div>
+
+<h2>Présences ({{ lignes|length }} adhérents, {{ nb_appels }} appels)</h2>
+{% if lignes %}
+<div class="tab"><table>
+  <thead><tr><th>Adhérent</th>
+    {% for a in appels %}<th title="{{ a.jour_date|date_fr }} {{ a.horaire }}">{{ a.jour_date.strftime('%d/%m') }}</th>{% endfor %}
+    <th>Total</th><th></th></tr></thead>
+  <tbody>
+  {% for l in lignes %}
+  <tr><td><b>{{ l.m.nom }}</b> {{ l.m.prenom }}</td>
+    {% for a in appels %}{% set v = grille.get((l.k, a.id)) %}
+      <td>{% if v %}<span class="p">P</span>{% elif v == false %}<span class="a">A</span>{% else %}<span class="a">·</span>{% endif %}</td>
+    {% endfor %}
+    <td>{{ l.total[0] }}/{{ l.total[1] }}</td>
+    <td><form method="post" style="margin:0" data-q="Retirer {{ l.m.nom }} {{ l.m.prenom }} de la liste ?" onsubmit="return confirm(this.dataset.q)">
+      <input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="id" value="{{ l.m.id }}">
+      <button class="x" name="action" value="retirer" title="Retirer de la liste">Retirer</button></form></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="aide">P présent, A absent. Les {{ appels|length }} derniers appels sont affichés ; le total compte tous les appels. <a href="{{ url_for('admin_export', g=grp.gid) }}">Télécharger les présences de ce cours (CSV)</a></p>
+{% else %}
+<div class="vide">Pas encore de liste pour ce cours. Importez-la ci-dessous.</div>
+{% endif %}
+
+<div class="deux" style="margin-top:22px">
+<form method="post" enctype="multipart/form-data" class="boite">
+  <input type="hidden" name="csrf" value="{{ csrf() }}">
+  <h2 style="margin-top:0">Importer la liste</h2>
+  <label class="champ" for="texte">Coller les noms</label>
+  <textarea id="texte" name="texte" placeholder="DUPONT;Léa&#10;MARTIN;Hugo&#10;(une personne par ligne, ou un copier-coller depuis Excel)"></textarea>
+  <label class="champ" for="fichier">Ou choisir un fichier (Excel ou CSV)</label>
+  <input type="file" id="fichier" name="fichier" accept=".xlsx,.csv,.txt">
+  <p><label><input type="radio" name="mode" value="remplacer" checked> Remplacer la liste</label><br>
+     <label><input type="radio" name="mode" value="ajouter"> Ajouter à la liste</label></p>
+  <p class="aide">Remplacer garde l’historique des présences : les personnes retirées restent dans les exports.</p>
+  <button class="btn" name="action" value="importer">Importer</button>
+</form>
+<form method="post" class="boite">
+  <input type="hidden" name="csrf" value="{{ csrf() }}">
+  <h2 style="margin-top:0">Ajouter une personne</h2>
+  <label class="champ" for="nom">Nom</label><input type="text" id="nom" name="nom" required>
+  <label class="champ" for="prenom">Prénom</label><input type="text" id="prenom" name="prenom">
+  <p><button class="btn" name="action" value="ajouter">Ajouter</button></p>
+</form>
+</div>
+{% endblock %}

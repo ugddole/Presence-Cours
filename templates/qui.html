@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titre %}Qui êtes-vous ?{% endblock %}
+{% block style %}<style>
+.noms{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:0 0 18px}
+.noms button{min-height:56px;font:600 18px var(--texte);border:1px solid var(--trait);background:#fff;border-radius:var(--r);cursor:pointer;color:var(--encre)}
+.noms button[aria-pressed=true]{border:2px solid var(--encre)}
+.noms button:hover{border-color:var(--encre)}
+</style>{% endblock %}
+{% block contenu %}
+<h1>Qui êtes-vous ?</h1>
+<p class="sous">Votre nom est retenu sur ce téléphone. Vous verrez directement vos cours.</p>
+<form method="post">
+  <input type="hidden" name="csrf" value="{{ csrf() }}">
+  {% if noms %}
+  <div class="noms">
+    {% for n in noms %}<button name="nom" value="{{ n }}" aria-pressed="{{ 'true' if n == actuel else 'false' }}">{{ n }}</button>{% endfor %}
+  </div>
+  {% else %}
+  <div class="vide">Le planning n'a pas pu être lu pour l'instant.</div>
+  {% endif %}
+  <button class="btn clair" name="nom" value="">Voir tous les cours</button>
+</form>
+{% endblock %}

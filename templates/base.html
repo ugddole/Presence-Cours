@@ -1,36 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#7a1f3d">
-<title>{% block title %}Présences{% endblock %} — UGD</title>
+<title>{% block titre %}Présences{% endblock %} · UGD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --papier:#F4F6F9; --blanc:#fff; --encre:#1B2230; --doux:#5B6475; --trait:#DCE1E9;
+  --ok:#1F8A5B; --err:#B8323F; --r:10px;
+  --titre:"Barlow Condensed","Arial Narrow",sans-serif; --texte:"Barlow",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--papier);color:var(--encre);font:16px/1.45 var(--texte);
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);-webkit-tap-highlight-color:transparent}
+a{color:inherit}
+.haut{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--trait);background:var(--blanc)}
+.haut .marque{font:700 20px/1 var(--titre);text-decoration:none;letter-spacing:.2px}
+.haut .marque span{color:var(--doux);font-weight:500}
+.haut nav{margin-left:auto;display:flex;gap:14px;font-size:14px}
+.haut nav a{color:var(--doux);text-decoration:none}
+.haut nav a:hover{color:var(--encre);text-decoration:underline}
+main{max-width:760px;margin:0 auto;padding:18px 16px 110px}
+main.large{max-width:1100px}
+h1{font:700 30px/1.1 var(--titre);margin:6px 0 4px}
+h2{font:600 22px/1.15 var(--titre);margin:26px 0 10px}
+.sous{color:var(--doux);margin:0 0 18px}
+.flash{padding:11px 14px;border-radius:var(--r);margin:0 0 14px;background:#E6F4EC;color:#135C3C;border:1px solid #BFE3CF}
+.flash.err{background:#FBEAEC;color:#8A1F2B;border-color:#F0C5CB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border-radius:var(--r);
+  border:1px solid var(--encre);background:var(--encre);color:#fff;font:600 16px var(--texte);text-decoration:none;cursor:pointer}
+.btn.clair{background:var(--blanc);color:var(--encre);border-color:var(--trait)}
+.btn.petit{min-height:34px;padding:0 12px;font-size:14px}
+.btn:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,label.eleve:focus-within{outline:3px solid #6A8FE0;outline-offset:2px}
+input[type=text],input[type=password],input[type=date],textarea,select{font:16px var(--texte);padding:10px 12px;border:1px solid var(--trait);border-radius:var(--r);background:#fff;width:100%;color:var(--encre)}
+textarea{min-height:130px}
+label.champ{display:block;font-weight:600;margin:12px 0 6px}
+.aide{color:var(--doux);font-size:14px}
+.boite{background:var(--blanc);border:1px solid var(--trait);border-radius:var(--r);padding:16px}
+.vide{padding:28px 18px;text-align:center;color:var(--doux);background:var(--blanc);border:1px dashed var(--trait);border-radius:var(--r)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+{% block style %}{% endblock %}
 </head>
 <body>
-<header class="entete">
-  <div class="entete-in">
-    <a class="marque" href="{{ url_for('admin') if is_admin() else url_for('accueil') }}">UGD <span>Présences</span></a>
-    <nav>
-      {% if is_admin() %}
-        <a href="{{ url_for('admin') }}">Cours</a>
-        <a href="{{ url_for('admin_gymnastes') }}">Gymnastes</a>
-        <a href="{{ url_for('admin_logout') }}">Quitter</a>
-      {% else %}
-        <a href="{{ url_for('accueil') }}">Mes cours</a>
-      {% endif %}
-    </nav>
-  </div>
+<header class="haut">
+  <a class="marque" href="{{ url_for('accueil') }}">UGD <span>Présences</span></a>
+  <nav>
+    {% if session.role %}
+      {% if session.role == 'admin' %}<a href="{{ url_for('admin_accueil') }}">Admin</a>{% endif %}
+      <a href="{{ url_for('qui') }}">{{ session.coach or 'Choisir mon nom' }}</a>
+      <a href="{{ url_for('deconnexion') }}">Quitter</a>
+    {% endif %}
+  </nav>
 </header>
-<main>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}<div class="flash flash-{{ cat }}" role="status">{{ msg }}</div>{% endfor %}
-  {% endwith %}
-  {% block content %}{% endblock %}
+<main class="{% block main_class %}{% endblock %}">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ 'err' if cat == 'err' }}">{{ msg }}</div>
+  {% endfor %}
+  {% block contenu %}{% endblock %}
 </main>
-{% block scripts %}{% endblock %}
+{% block script %}{% endblock %}
 </body>
 </html>

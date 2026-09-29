@@ -1,31 +1,66 @@
-{% extends 'base.html' %}
-{% block title %}Mes cours{% endblock %}
-{% block content %}
-{% if mes_cours %}
-<h1>Mes cours</h1>
-<p class="sous">Choisis le cours pour faire l'appel.</p>
-<div class="pile">
-  {% for c in mes_cours %}
-  <div class="carte">
-    <a class="cours-lien" href="{{ url_for('cours_detail', id=c.id) }}">
-      <div>
-        <div class="cours-nom">{{ c.nom }}</div>
-        <div class="meta">{{ c.jour }} {{ c.horaire }}{% if c.salle %}, {{ c.salle }}{% endif %}</div>
-      </div>
-      <span class="btn btn-ligne" aria-hidden="true">Ouvrir</span>
-    </a>
-  </div>
-  {% endfor %}
+{% extends "base.html" %}
+{% block titre %}Mes cours{% endblock %}
+{% block style %}<style>
+.jour{display:flex;align-items:center;gap:8px;margin:0 0 4px}
+.jour h1{margin:0;flex:1}
+.fleche{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--trait);border-radius:var(--r);background:#fff;text-decoration:none;font-size:20px}
+.filtre{display:flex;gap:8px;margin:12px 0 18px;flex-wrap:wrap}
+.filtre a{padding:8px 14px;border-radius:999px;border:1px solid var(--trait);background:#fff;text-decoration:none;font-weight:500;font-size:15px}
+.filtre a.on{background:var(--encre);color:#fff;border-color:var(--encre)}
+.cours{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.carte{display:grid;grid-template-columns:78px 1fr auto;align-items:center;gap:0 14px;padding:14px 16px 14px 0;background:#fff;
+  border:1px solid var(--trait);border-left:8px solid var(--c);border-radius:var(--r);text-decoration:none}
+.carte:hover{border-color:var(--encre);border-left-color:var(--c)}
+.h{font:700 24px/1 var(--titre);text-align:right;padding-right:2px}
+.h small{display:block;font:500 15px/1.3 var(--titre);color:var(--doux)}
+.nom{font:600 21px/1.15 var(--titre)}
+.info{color:var(--doux);font-size:14px;margin-top:2px}
+.etat{font-size:13px;font-weight:600;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.etat.encours{background:var(--c);color:#fff}
+.etat.fait{background:#E6F4EC;color:#135C3C}
+.etat.afaire{background:#FFF1DC;color:#8A5300}
+.carte.passe:not(.ok){opacity:.9}
+@media (max-width:480px){.carte{grid-template-columns:64px 1fr;row-gap:8px}.etat{grid-column:2;justify-self:start}.h{font-size:21px}}
+</style>{% endblock %}
+{% block contenu %}
+<div class="jour">
+  <a class="fleche" href="{{ url_for('accueil', d=hier.isoformat(), tous='1' if tous and coach else None) }}" aria-label="Jour précédent">‹</a>
+  <h1>{{ 'Aujourd’hui' if jour == aujourdhui else jour|date_fr }}</h1>
+  <a class="fleche" href="{{ url_for('accueil', d=demain.isoformat(), tous='1' if tous and coach else None) }}" aria-label="Jour suivant">›</a>
 </div>
-<h2>Ajouter un autre cours</h2>
-{% else %}
-<h1>Faire l'appel</h1>
-<p class="sous">Saisis le code de ton cours, donné par le bureau. Ton téléphone s'en souviendra.</p>
+<p class="sous" style="margin:0">{{ jour|date_fr }}{% if jour != aujourdhui %} · <a href="{{ url_for('accueil') }}">revenir à aujourd’hui</a>{% endif %}</p>
+
+{% if coach %}
+<div class="filtre">
+  <a href="{{ url_for('accueil', d=jour.isoformat()) }}" class="{{ 'on' if not tous }}">Mes cours ({{ nb_miens }})</a>
+  <a href="{{ url_for('accueil', d=jour.isoformat(), tous=1) }}" class="{{ 'on' if tous }}">Tous les cours du jour ({{ nb_jour }})</a>
+</div>
+{% else %}<div style="height:14px"></div>{% endif %}
+
+{% if erreur_planning and not cartes %}
+  <div class="flash err">Le planning est momentanément illisible. Réessayez dans une minute.</div>
 {% endif %}
-<form class="carte code-bloc" method="post" action="{{ url_for('saisir_code') }}">
-  <label for="code">Code du cours</label>
-  <input id="code" name="code" type="text" inputmode="numeric" autocomplete="off" maxlength="12" required autofocus>
-  <button class="btn" type="submit">Accéder au cours</button>
-</form>
-<p class="meta" style="text-align:center;margin-top:2rem"><a href="{{ url_for('admin_login') }}">Accès bureau</a></p>
+
+{% if cartes %}
+<ul class="cours">
+  {% for c in cartes %}
+  <li><a class="carte {{ c.etat }} {{ 'ok' if c.fait }}" style="--c:{{ c.couleur }}" href="{{ url_for('appel', course_id=c.id, d=jour.isoformat()) }}">
+    <div class="h">{{ c.debut }}<small>{{ c.fin }}</small></div>
+    <div>
+      <div class="nom">{{ c.label }}</div>
+      <div class="info">{{ c.lieu }}{% if c.espace %}, {{ c.espace }}{% endif %}</div>
+      <div class="info">{{ c.encadrants|join(', ') }}</div>
+    </div>
+    {% if c.fait %}<span class="etat fait">Appel fait : {{ c.fait[0] }}/{{ c.fait[1] }}</span>
+    {% elif c.etat == 'encours' %}<span class="etat encours">En cours</span>
+    {% elif c.etat == 'passe' %}<span class="etat afaire">Appel à faire</span>
+    {% else %}<span></span>{% endif %}
+  </a></li>
+  {% endfor %}
+</ul>
+{% elif not tous and nb_jour %}
+  <div class="vide">Vous n’avez pas de cours ce jour-là.<br><a href="{{ url_for('accueil', d=jour.isoformat(), tous=1) }}">Voir les {{ nb_jour }} cours du jour</a></div>
+{% else %}
+  <div class="vide">Aucun cours au planning ce jour-là.</div>
+{% endif %}
 {% endblock %}

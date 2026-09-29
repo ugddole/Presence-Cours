@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titre %}Connexion{% endblock %}
+{% block contenu %}
+<h1>Appel des cours</h1>
+<p class="sous">Saisissez le code du club pour faire l'appel.</p>
+{% if non_configure %}
+  <div class="flash err">Aucun code n'est encore défini. Ajoutez les variables CODE_ENTRAINEUR et CODE_ADMIN dans Railway.</div>
+{% endif %}
+<form method="post" class="boite" style="max-width:420px">
+  <input type="hidden" name="csrf" value="{{ csrf() }}">
+  <label class="champ" for="code">Code</label>
+  <input type="password" id="code" name="code" autocomplete="current-password" required autofocus>
+  {% if erreur %}<p style="color:var(--err);margin:8px 0 0">{{ erreur }}</p>{% endif %}
+  <p style="margin:16px 0 0"><button class="btn">Entrer</button></p>
+</form>
+{% endblock %}

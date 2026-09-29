@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
-{% block title %}{{ titre }}{% endblock %}
-{% block content %}
+{% extends "base.html" %}
+{% block titre %}{{ titre }}{% endblock %}
+{% block contenu %}
 <h1>{{ titre }}</h1>
 <p class="sous">{{ texte }}</p>
-<a class="btn btn-ligne" href="{{ url_for('accueil') }}">Retour à l'accueil</a>
+<a class="btn" href="{{ url_for('accueil') }}">Revenir aux cours</a>
 {% endblock %}

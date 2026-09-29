@@ -1,63 +1,63 @@
-{% extends 'base.html' %}
-{% block title %}Appel — {{ c.nom }}{% endblock %}
-{% block content %}
-<a class="retour" href="{{ url_for('cours_detail', id=c.id) }}">‹ {{ c.nom }}</a>
-<h1>Appel</h1>
-<p class="sous">{{ d|fdate }}{% if deja %} — déjà enregistré, tu peux le corriger{% endif %}</p>
+{% extends "base.html" %}
+{% block titre %}Appel {{ c.label }}{% endblock %}
+{% block style %}<style>
+.tete{border-left:8px solid var(--c);padding:2px 0 2px 14px;margin:0 0 16px}
+.tete h1{margin:0}
+.outils{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
+.liste{display:grid;gap:8px;margin:0 0 20px}
+label.eleve{display:flex;align-items:center;gap:14px;min-height:58px;padding:8px 14px;background:#fff;border:1px solid var(--trait);border-radius:var(--r);cursor:pointer;user-select:none}
+label.eleve input{position:absolute;opacity:0;pointer-events:none}
+.coche{flex:none;width:30px;height:30px;border-radius:8px;border:2px solid var(--trait);display:grid;place-items:center;color:#fff;font-weight:700}
+.qui{font-size:18px}.qui b{font-weight:600}
+label.eleve:has(input:checked){background:color-mix(in srgb,var(--c) 12%,#fff);border-color:var(--c)}
+label.eleve:has(input:checked) .coche{background:var(--c);border-color:var(--c)}
+label.eleve:has(input:checked) .coche::after{content:"✓"}
+.barre{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--trait);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+.barre div{max-width:760px;margin:0 auto;display:flex;gap:12px;align-items:center}
+.barre .compte{font:700 22px var(--titre);white-space:nowrap}
+.barre .btn{flex:1;min-height:52px;font-size:18px}
+</style>{% endblock %}
+{% block contenu %}
+<div class="tete" style="--c:{{ c.couleur }}">
+  <h1>{{ c.label }}</h1>
+  <p class="sous" style="margin:2px 0 0">{{ jour|date_fr }}, {{ c.debut }}–{{ c.fin }} · {{ c.lieu }}{% if c.espace %}, {{ c.espace }}{% endif %}</p>
+</div>
+{% if existant %}<div class="flash">Appel déjà fait{% if existant.fait_par %} par {{ existant.fait_par }}{% endif %}. Vous pouvez le corriger.</div>{% endif %}
 
-<form class="appel-date" method="get">
-  <div class="champ"><label for="date">Changer de date</label><input id="date" type="date" name="date" value="{{ d }}"></div>
-  <button class="btn btn-ligne" type="submit">Afficher</button>
-</form>
-
-{% if gyms %}
-<form method="post" id="form-appel">
-  <input type="hidden" name="date" value="{{ d }}">
-  <ul class="appel-liste">
-  {% for g in gyms %}
-    {% set st = existants.get(g.id, 'P') %}
-    <li class="appel-ligne est-{{ st }}">
-      <div class="appel-nom"><b>{{ g.nom }}</b> {{ g.prenom }}</div>
-      <div class="segments" role="radiogroup" aria-label="{{ g.prenom }} {{ g.nom }}">
-        {% for k, lib in STATUTS.items() %}
-        <input type="radio" id="g{{ g.id }}{{ k }}" name="g{{ g.id }}" value="{{ k }}" {% if st == k %}checked{% endif %}>
-        <label for="g{{ g.id }}{{ k }}" title="{{ lib }}"><span class="lettre" aria-hidden="true">{{ k }}</span><span class="mot">{{ lib }}</span></label>
-        {% endfor %}
-      </div>
-    </li>
-  {% endfor %}
-  </ul>
-  <p class="meta" style="margin-top:.6rem">Tout le monde est présent par défaut : touche seulement les absents et les excusés.</p>
-
-  <div class="decompte">
-    <div class="decompte-in">
-      <div class="compteurs" aria-live="polite">
-        <div class="compteur P"><b id="nP">0</b><small>présents</small></div>
-        <div class="compteur A"><b id="nA">0</b><small>absents</small></div>
-        <div class="compteur E"><b id="nE">0</b><small>excusés</small></div>
-      </div>
-      <button class="btn" type="submit">Enregistrer</button>
-    </div>
+<form method="post" id="f" style="--c:{{ c.couleur }}">
+  <input type="hidden" name="csrf" value="{{ csrf() }}">
+  {% if membres %}
+  <div class="outils">
+    <button type="button" class="btn clair petit" data-tous="1">Tout le monde présent</button>
+    <button type="button" class="btn clair petit" data-tous="0">Tout décocher</button>
   </div>
-</form>
-{% else %}
-<div class="carte vide">Aucun gymnaste inscrit dans ce cours pour l'instant.</div>
-{% endif %}
-{% endblock %}
+  <div class="liste">
+    {% for m in membres %}
+    <label class="eleve"><input type="checkbox" name="present" value="{{ m.id }}" {{ 'checked' if m.id in coches }}>
+      <span class="coche" aria-hidden="true"></span><span class="qui"><b>{{ m.nom }}</b> {{ m.prenom }}</span></label>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="vide" style="margin-bottom:18px">Aucune liste d’adhérents pour ce cours. Demandez à l’administrateur de l’importer.<br>Vous pouvez quand même noter les personnes présentes ci-dessous.</div>
+  {% endif %}
 
-{% block scripts %}
-<script>
-(function(){
-  var f = document.getElementById('form-appel'); if(!f) return;
-  function maj(){
-    var n = {P:0,A:0,E:0};
-    f.querySelectorAll('input[type=radio]:checked').forEach(function(r){
-      n[r.value]++;
-      r.closest('.appel-ligne').className = 'appel-ligne est-' + r.value;
-    });
-    for (var k in n) document.getElementById('n'+k).textContent = n[k];
-  }
-  f.addEventListener('change', maj); maj();
-})();
-</script>
+  {% for e in essais %}
+  <label class="eleve"><input type="checkbox" name="essai_garde" value="{{ e }}" checked>
+    <span class="coche" aria-hidden="true"></span><span class="qui"><b>{{ e }}</b> <span class="aide">(en plus)</span></span></label>
+  {% endfor %}
+  <label class="champ" for="essais">Personnes en plus (essai, non inscrites)</label>
+  <input type="text" id="essais" name="essais" placeholder="Séparez les noms par des virgules">
+
+  <div class="barre"><div>
+    <span class="compte"><span id="n">0</span>/{{ membres|length }}</span>
+    <button class="btn">Enregistrer l’appel</button>
+  </div></div>
+</form>
 {% endblock %}
+{% block script %}<script>
+const f=document.getElementById('f'),n=document.getElementById('n');
+const maj=()=>n.textContent=f.querySelectorAll('input[name=present]:checked').length;
+f.addEventListener('change',maj);
+document.querySelectorAll('[data-tous]').forEach(b=>b.onclick=()=>{f.querySelectorAll('input[name=present]').forEach(i=>i.checked=b.dataset.tous==='1');maj();});
+maj();
+</script>{% endblock %}

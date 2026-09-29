@@ -1,54 +1,56 @@
-{% extends 'base.html' %}
-{% block title %}Bureau{% endblock %}
-{% block content %}
-<h1>Cours</h1>
-<p class="sous">{{ cours|length }} cours, {{ nb_gym }} gymnastes actifs.</p>
-<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
-  <a class="btn" href="{{ url_for('admin_import') }}">Importer depuis Kalisport</a>
-  <a class="btn btn-ligne" href="{{ url_for('admin_export') }}">Exporter en Excel</a>
-  <a class="btn btn-ligne" href="{{ url_for('admin_cours') }}">Ajouter un cours</a>
+{% extends "base.html" %}
+{% block titre %}Admin{% endblock %}
+{% block main_class %}large{% endblock %}
+{% block style %}<style>
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
+.tab{overflow-x:auto;background:#fff;border:1px solid var(--trait);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--trait);text-align:left;vertical-align:top}
+th{font-weight:600;color:var(--doux);font-size:14px}
+tr:last-child td{border-bottom:0}
+td.g{border-left:6px solid var(--c)}
+td.g a{font-weight:600;text-decoration:none}td.g a:hover{text-decoration:underline}
+.num{text-align:right;white-space:nowrap}
+.zero{color:var(--err);font-weight:600}
+.creneau{white-space:nowrap}
+</style>{% endblock %}
+{% block contenu %}
+<h1>Administration</h1>
+<p class="sous">Les cours viennent du planning. Ici, vous gérez seulement les listes d’adhérents.</p>
+{% if erreur_planning %}<div class="flash err">Dernière lecture du planning impossible ({{ erreur_planning }}). La dernière version connue est utilisée.</div>{% endif %}
+
+<div class="actions">
+  <form method="post" style="margin:0"><input type="hidden" name="csrf" value="{{ csrf() }}">
+    <button class="btn clair" name="action" value="rafraichir">Relire le planning</button></form>
+  <a class="btn clair" href="{{ url_for('admin_export') }}">Télécharger toutes les présences (CSV)</a>
 </div>
 
-{% if alertes %}
-<div class="carte alerte" style="margin-bottom:1rem">
-  <b>À surveiller</b> <span class="meta">({{ seuil }} absences non excusées d'affilée ou plus)</span>
-  <ul style="margin:.4rem 0 0;padding-left:1.2rem">
-    {% for a in alertes %}<li><a href="{{ url_for('admin_gymnaste', id=a.gymnaste_id) }}">{{ a.prenom }} {{ a.nom }}</a> <span class="meta">— {{ a.cours_nom }}</span></li>{% endfor %}
-  </ul>
-</div>
-{% endif %}
-
-{% if cours %}
-<div class="carte tableau-wrap">
-<table>
-  <thead><tr><th>Cours</th><th>Créneau</th><th>Code</th><th class="num">Gym.</th><th class="num">Séances</th><th class="num">Taux</th><th></th></tr></thead>
+<h2>Cours et listes</h2>
+{% if groupes %}
+<div class="tab"><table>
+  <thead><tr><th>Cours</th><th>Créneaux</th><th class="num">Adhérents</th><th class="num">Appels faits</th></tr></thead>
   <tbody>
-  {% for c in cours %}
+  {% for g in groupes %}
   <tr>
-    <td><a href="{{ url_for('cours_detail', id=c.id) }}"><b>{{ c.nom }}</b></a>{% if not c.actif %} <span class="pastille inactif">inactif</span>{% endif %}
-      {% if c.entraineur %}<div class="meta">{{ c.entraineur }}</div>{% endif %}</td>
-    <td class="meta">{{ c.jour }} {{ c.horaire }}{% if not c.jour and not c.horaire %}<i>à compléter</i>{% endif %}</td>
-    <td><span class="pastille">{{ c.code }}</span></td>
-    <td class="num">{{ c.nb_gym }}</td>
-    <td class="num">{{ c.nb_seances }}</td>
-    <td class="num">{{ (c.taux|int ~ ' %') if c.taux is not none else '—' }}</td>
-    <td class="num"><a href="{{ url_for('admin_cours', id=c.id) }}">Modifier</a></td>
+    <td class="g" style="--c:{{ g.couleur }}"><a href="{{ url_for('admin_groupe', g=g.gid) }}">{{ g.label }}</a></td>
+    <td>{% for c in g.creneaux %}<div class="creneau">{{ ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'][c.jour] }} {{ c.debut }}–{{ c.fin }}</div>{% endfor %}</td>
+    <td class="num {{ 'zero' if not g.nb_membres }}">{{ g.nb_membres or 'aucun' }}</td>
+    <td class="num">{{ g.nb_appels }}</td>
   </tr>
   {% endfor %}
   </tbody>
-</table>
-</div>
+</table></div>
 {% else %}
-<div class="carte vide">Aucun cours. Commence par importer l'export Kalisport : les cours seront créés automatiquement.</div>
+<div class="vide">Aucun cours lu dans le planning. Vérifiez que le planning partagé est accessible, puis cliquez sur « Relire le planning ».</div>
 {% endif %}
 
-<h2>Réglages</h2>
-<form class="carte" method="post" action="{{ url_for('admin_reglages') }}" style="max-width:420px">
-  <div class="champ">
-    <label for="seuil">Alerte après combien d'absences d'affilée ?</label>
-    <input id="seuil" type="number" name="seuil_alerte" min="1" max="20" value="{{ seuil }}">
-    <div class="aide">Les absences excusées ne comptent pas.</div>
-  </div>
-  <button class="btn btn-ligne" type="submit">Enregistrer</button>
+<h2>Importer toutes les listes d’un coup</h2>
+<form method="post" action="{{ url_for('admin_import') }}" enctype="multipart/form-data" class="boite">
+  <input type="hidden" name="csrf" value="{{ csrf() }}">
+  <p class="aide" style="margin-top:0">Fichier Excel ou CSV avec les colonnes <b>Nom</b>, <b>Prénom</b> et <b>Cours</b> (ou Groupe). Le nom du cours doit être celui du planning, par exemple « Twirling Mixte – 6-10 ans » ou simplement « Parkour Mixte ». Pour importer une liste cours par cours, ouvrez le cours dans le tableau ci-dessus.</p>
+  <input type="file" name="fichier" accept=".xlsx,.csv,.txt" required>
+  <p><label><input type="radio" name="mode" value="ajouter" checked> Ajouter aux listes existantes</label><br>
+     <label><input type="radio" name="mode" value="remplacer"> Remplacer les listes des cours présents dans le fichier</label></p>
+  <button class="btn">Importer</button>
 </form>
 {% endblock %}
