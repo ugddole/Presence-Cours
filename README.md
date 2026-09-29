@@ -1,17 +1,19 @@
-# UGD Présences — appel des cours
+# UGD Présences
 
-## Déploiement Railway
-1. Crée un dépôt GitHub avec ces fichiers, puis un projet Railway relié au dépôt.
-2. Ajoute un **Volume** Railway monté sur `/data` (sinon la base est effacée à chaque déploiement).
-3. Variables d'environnement :
-   - `DATA_DIR=/data`
-   - `ADMIN_PASSWORD=` ton mot de passe bureau
-   - `SECRET_KEY=` une longue chaîne aléatoire
-4. Railway lance l'appli avec le `Procfile` (gunicorn).
+Appel des cours relié au planning partagé (Google Sheet du planning 2026-2027).
 
-## Démarrage
-1. `/bureau` → connexion → **Importer depuis Kalisport** : les gymnastes et les cours sont créés.
-2. Complète chaque cours (jour, horaire, entraîneur) et donne son code à 4 chiffres à l'entraîneur.
-3. L'entraîneur ouvre l'appli sur son téléphone, saisit le code une fois, puis fait l'appel.
+- Les cours et créneaux sont lus dans le planning : rien à paramétrer ici.
+- L'admin importe les listes d'adhérents, cours par cours ou en un seul fichier.
+- Chaque entraîneur choisit son nom une fois, puis voit ses cours du jour.
 
-À chaque nouvel import, les inscriptions des gymnastes suivent le fichier Kalisport ; l'historique des présences est conservé.
+## Variables Railway
+
+| Variable | Rôle |
+|---|---|
+| `CODE_ENTRAINEUR` | Code commun à tous les entraîneurs |
+| `CODE_ADMIN` | Code administrateur (import des listes, exports) |
+| `SECRET_KEY` | Longue chaîne aléatoire |
+| `DATABASE_URL` | Fournie automatiquement par le service PostgreSQL de Railway |
+| `PLANNING_URL` | Facultatif : adresse du script Google du planning (déjà renseignée) |
+
+Commande de démarrage : `gunicorn app:app` (voir `Procfile`).
