@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}{{ c.nom }}{% endblock %}
+{% block content %}
+<a class="retour" href="{{ url_for('admin') if is_admin() else url_for('accueil') }}">‹ {{ 'Tous les cours' if is_admin() else 'Mes cours' }}</a>
+<h1>{{ c.nom }}</h1>
+<p class="sous">{{ c.jour }} {{ c.horaire }}{% if c.salle %}, {{ c.salle }}{% endif %}{% if c.entraineur %} — {{ c.entraineur }}{% endif %}</p>
+
+<a class="btn btn-large" href="{{ url_for('appel', id=c.id, date=aujourdhui) }}">Faire l'appel d'aujourd'hui</a>
+
+{% if alertes %}
+<h2>À surveiller</h2>
+<div class="carte alerte">
+  <p class="meta" style="margin-top:0">{{ seuil }} absences non excusées d'affilée ou plus :</p>
+  <ul style="margin:0;padding-left:1.2rem">{% for a in alertes %}<li><b>{{ a.prenom }} {{ a.nom }}</b></li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<h2>Séances ({{ seances|length }})</h2>
+{% if seances %}
+<div class="carte tableau-wrap">
+<table>
+  <thead><tr><th>Date</th><th class="num">Présents</th><th class="num">Absents</th><th class="num">Excusés</th><th></th></tr></thead>
+  <tbody>
+  {% for s in seances %}
+  <tr>
+    <td><a href="{{ url_for('appel', id=c.id, date=s.date) }}">{{ s.date|fdate }}</a></td>
+    <td class="num s-P">{{ s.np or 0 }}</td><td class="num s-A">{{ s.na or 0 }}</td><td class="num s-E">{{ s.ne or 0 }}</td>
+    <td class="num">
+      <form method="post" action="{{ url_for('seance_supprimer', id=c.id, sid=s.id) }}" onsubmit="return confirm('Supprimer l\'appel du {{ s.date|fdate }} ?')">
+        <button class="btn-lien" type="submit">Supprimer</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="carte vide">Aucun appel pour l'instant. Le premier se fait avec le bouton ci-dessus.</div>
+{% endif %}
+
+<h2>Gymnastes ({{ stats|length }})</h2>
+{% if stats %}
+<div class="carte tableau-wrap">
+<table>
+  <thead><tr><th>Gymnaste</th><th class="num">Présent</th><th class="num">Absent</th><th class="num">Excusé</th><th class="num">Taux</th></tr></thead>
+  <tbody>
+  {% for g, s in stats %}
+  <tr>
+    <td>{% if is_admin() %}<a href="{{ url_for('admin_gymnaste', id=g.id) }}">{% endif %}<b>{{ g.nom }}</b> {{ g.prenom }}{% if is_admin() %}</a>{% endif %}</td>
+    <td class="num">{{ s.P }}</td><td class="num">{{ s.A }}</td><td class="num">{{ s.E }}</td>
+    <td class="num {% if s.taux is not none and s.taux < 60 %}taux-bas{% endif %}">{{ s.taux ~ ' %' if s.taux is not none else '—' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="carte vide">Aucun gymnaste inscrit dans ce cours. Le bureau les ajoute en important l'export Kalisport.</div>
+{% endif %}
+
+{% if not is_admin() %}
+<form method="post" action="{{ url_for('oublier_cours', id=c.id) }}" style="margin-top:2rem;text-align:center">
+  <button class="btn-lien" type="submit">Retirer ce cours de mon téléphone</button>
+</form>
+{% endif %}
+{% endblock %}

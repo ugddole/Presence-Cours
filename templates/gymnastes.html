@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Gymnastes{% endblock %}
+{% block content %}
+<h1>Gymnastes</h1>
+<form method="get" style="max-width:420px;margin-bottom:1rem">
+  <input type="search" name="q" value="{{ q }}" placeholder="Rechercher un nom" aria-label="Rechercher un gymnaste">
+</form>
+{% if gyms %}
+<div class="carte tableau-wrap">
+<table>
+  <thead><tr><th>Gymnaste</th><th>Cours</th><th class="num">Taux</th></tr></thead>
+  <tbody>
+  {% for g in gyms %}
+  <tr>
+    <td><a href="{{ url_for('admin_gymnaste', id=g.id) }}"><b>{{ g.nom }}</b> {{ g.prenom }}</a>{% if not g.actif %} <span class="pastille inactif">inactif</span>{% endif %}</td>
+    <td class="meta">{{ g.cours_noms or '—' }}</td>
+    {% set t = ((100 * g.np / g.n)|round|int) if g.n else none %}
+    <td class="num {% if t is not none and t < 60 %}taux-bas{% endif %}">{{ (t ~ ' %') if t is not none else '—' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="carte vide">Aucun gymnaste trouvé.</div>
+{% endif %}
+{% endblock %}

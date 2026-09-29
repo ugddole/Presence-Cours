@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Appel — {{ c.nom }}{% endblock %}
+{% block content %}
+<a class="retour" href="{{ url_for('cours_detail', id=c.id) }}">‹ {{ c.nom }}</a>
+<h1>Appel</h1>
+<p class="sous">{{ d|fdate }}{% if deja %} — déjà enregistré, tu peux le corriger{% endif %}</p>
+
+<form class="appel-date" method="get">
+  <div class="champ"><label for="date">Changer de date</label><input id="date" type="date" name="date" value="{{ d }}"></div>
+  <button class="btn btn-ligne" type="submit">Afficher</button>
+</form>
+
+{% if gyms %}
+<form method="post" id="form-appel">
+  <input type="hidden" name="date" value="{{ d }}">
+  <ul class="appel-liste">
+  {% for g in gyms %}
+    {% set st = existants.get(g.id, 'P') %}
+    <li class="appel-ligne est-{{ st }}">
+      <div class="appel-nom"><b>{{ g.nom }}</b> {{ g.prenom }}</div>
+      <div class="segments" role="radiogroup" aria-label="{{ g.prenom }} {{ g.nom }}">
+        {% for k, lib in STATUTS.items() %}
+        <input type="radio" id="g{{ g.id }}{{ k }}" name="g{{ g.id }}" value="{{ k }}" {% if st == k %}checked{% endif %}>
+        <label for="g{{ g.id }}{{ k }}" title="{{ lib }}"><span class="lettre" aria-hidden="true">{{ k }}</span><span class="mot">{{ lib }}</span></label>
+        {% endfor %}
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+  <p class="meta" style="margin-top:.6rem">Tout le monde est présent par défaut : touche seulement les absents et les excusés.</p>
+
+  <div class="decompte">
+    <div class="decompte-in">
+      <div class="compteurs" aria-live="polite">
+        <div class="compteur P"><b id="nP">0</b><small>présents</small></div>
+        <div class="compteur A"><b id="nA">0</b><small>absents</small></div>
+        <div class="compteur E"><b id="nE">0</b><small>excusés</small></div>
+      </div>
+      <button class="btn" type="submit">Enregistrer</button>
+    </div>
+  </div>
+</form>
+{% else %}
+<div class="carte vide">Aucun gymnaste inscrit dans ce cours pour l'instant.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  var f = document.getElementById('form-appel'); if(!f) return;
+  function maj(){
+    var n = {P:0,A:0,E:0};
+    f.querySelectorAll('input[type=radio]:checked').forEach(function(r){
+      n[r.value]++;
+      r.closest('.appel-ligne').className = 'appel-ligne est-' + r.value;
+    });
+    for (var k in n) document.getElementById('n'+k).textContent = n[k];
+  }
+  f.addEventListener('change', maj); maj();
+})();
+</script>
+{% endblock %}

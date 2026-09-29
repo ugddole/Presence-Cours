@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}{{ g.prenom }} {{ g.nom }}{% endblock %}
+{% block content %}
+<a class="retour" href="{{ url_for('admin_gymnastes') }}">‹ Gymnastes</a>
+<h1>{{ g.prenom }} {{ g.nom }}</h1>
+<p class="sous">{% if g.naissance %}Né(e) le {{ g.naissance }}{% endif %}{% if not g.actif %} <span class="pastille inactif">inactif</span>{% endif %}</p>
+{% for c, s, hist in blocs %}
+<h2>{{ c.nom }}</h2>
+<p class="meta">{{ s.n }} séances — {{ s.P }} présent, {{ s.A }} absent, {{ s.E }} excusé{% if s.taux is not none %} — <b>{{ s.taux }} %</b> de présence{% endif %}</p>
+{% if hist %}
+<div class="carte tableau-wrap"><table><tbody>
+  {% for h in hist %}<tr><td>{{ h.date|fdate }}</td><td class="num s-{{ h.statut or '' }}">{{ STATUTS.get(h.statut, 'Non inscrit à cette date') }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% else %}
+<div class="carte vide">Inscrit(e) à aucun cours.</div>
+{% endfor %}
+{% endblock %}

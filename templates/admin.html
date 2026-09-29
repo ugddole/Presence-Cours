@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Bureau{% endblock %}
+{% block content %}
+<h1>Cours</h1>
+<p class="sous">{{ cours|length }} cours, {{ nb_gym }} gymnastes actifs.</p>
+<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+  <a class="btn" href="{{ url_for('admin_import') }}">Importer depuis Kalisport</a>
+  <a class="btn btn-ligne" href="{{ url_for('admin_export') }}">Exporter en Excel</a>
+  <a class="btn btn-ligne" href="{{ url_for('admin_cours') }}">Ajouter un cours</a>
+</div>
+
+{% if alertes %}
+<div class="carte alerte" style="margin-bottom:1rem">
+  <b>À surveiller</b> <span class="meta">({{ seuil }} absences non excusées d'affilée ou plus)</span>
+  <ul style="margin:.4rem 0 0;padding-left:1.2rem">
+    {% for a in alertes %}<li><a href="{{ url_for('admin_gymnaste', id=a.gymnaste_id) }}">{{ a.prenom }} {{ a.nom }}</a> <span class="meta">— {{ a.cours_nom }}</span></li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if cours %}
+<div class="carte tableau-wrap">
+<table>
+  <thead><tr><th>Cours</th><th>Créneau</th><th>Code</th><th class="num">Gym.</th><th class="num">Séances</th><th class="num">Taux</th><th></th></tr></thead>
+  <tbody>
+  {% for c in cours %}
+  <tr>
+    <td><a href="{{ url_for('cours_detail', id=c.id) }}"><b>{{ c.nom }}</b></a>{% if not c.actif %} <span class="pastille inactif">inactif</span>{% endif %}
+      {% if c.entraineur %}<div class="meta">{{ c.entraineur }}</div>{% endif %}</td>
+    <td class="meta">{{ c.jour }} {{ c.horaire }}{% if not c.jour and not c.horaire %}<i>à compléter</i>{% endif %}</td>
+    <td><span class="pastille">{{ c.code }}</span></td>
+    <td class="num">{{ c.nb_gym }}</td>
+    <td class="num">{{ c.nb_seances }}</td>
+    <td class="num">{{ (c.taux|int ~ ' %') if c.taux is not none else '—' }}</td>
+    <td class="num"><a href="{{ url_for('admin_cours', id=c.id) }}">Modifier</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="carte vide">Aucun cours. Commence par importer l'export Kalisport : les cours seront créés automatiquement.</div>
+{% endif %}
+
+<h2>Réglages</h2>
+<form class="carte" method="post" action="{{ url_for('admin_reglages') }}" style="max-width:420px">
+  <div class="champ">
+    <label for="seuil">Alerte après combien d'absences d'affilée ?</label>
+    <input id="seuil" type="number" name="seuil_alerte" min="1" max="20" value="{{ seuil }}">
+    <div class="aide">Les absences excusées ne comptent pas.</div>
+  </div>
+  <button class="btn btn-ligne" type="submit">Enregistrer</button>
+</form>
+{% endblock %}

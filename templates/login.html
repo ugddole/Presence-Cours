@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Accès bureau{% endblock %}
+{% block content %}
+<h1>Accès bureau</h1>
+<p class="sous">Gestion des cours, des codes, des imports Kalisport et des statistiques.</p>
+<form class="carte" method="post" style="max-width:420px">
+  <div class="champ"><label for="password">Mot de passe</label><input id="password" type="password" name="password" required autofocus></div>
+  <button class="btn" type="submit">Se connecter</button>
+</form>
+{% endblock %}

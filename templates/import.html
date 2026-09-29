@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Import Kalisport{% endblock %}
+{% block content %}
+<a class="retour" href="{{ url_for('admin') }}">‹ Cours</a>
+<h1>Importer depuis Kalisport</h1>
+<p class="sous">Exporte la liste des adhérents depuis Kalisport (Excel ou CSV), avec la colonne du cours ou du groupe, puis envoie le fichier ici.</p>
+<form class="carte" method="post" enctype="multipart/form-data" style="max-width:560px">
+  <div class="champ"><label for="fichier">Fichier .xlsx ou .csv</label>
+    <input id="fichier" type="file" name="fichier" accept=".xlsx,.xlsm,.csv,.txt" required></div>
+  <button class="btn" type="submit">Lire le fichier</button>
+  <p class="aide">À l'étape suivante, tu vérifies quelle colonne correspond à quoi avant que rien ne soit enregistré.</p>
+</form>
+{% endblock %}

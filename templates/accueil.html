@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Mes cours{% endblock %}
+{% block content %}
+{% if mes_cours %}
+<h1>Mes cours</h1>
+<p class="sous">Choisis le cours pour faire l'appel.</p>
+<div class="pile">
+  {% for c in mes_cours %}
+  <div class="carte">
+    <a class="cours-lien" href="{{ url_for('cours_detail', id=c.id) }}">
+      <div>
+        <div class="cours-nom">{{ c.nom }}</div>
+        <div class="meta">{{ c.jour }} {{ c.horaire }}{% if c.salle %}, {{ c.salle }}{% endif %}</div>
+      </div>
+      <span class="btn btn-ligne" aria-hidden="true">Ouvrir</span>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+<h2>Ajouter un autre cours</h2>
+{% else %}
+<h1>Faire l'appel</h1>
+<p class="sous">Saisis le code de ton cours, donné par le bureau. Ton téléphone s'en souviendra.</p>
+{% endif %}
+<form class="carte code-bloc" method="post" action="{{ url_for('saisir_code') }}">
+  <label for="code">Code du cours</label>
+  <input id="code" name="code" type="text" inputmode="numeric" autocomplete="off" maxlength="12" required autofocus>
+  <button class="btn" type="submit">Accéder au cours</button>
+</form>
+<p class="meta" style="text-align:center;margin-top:2rem"><a href="{{ url_for('admin_login') }}">Accès bureau</a></p>
+{% endblock %}

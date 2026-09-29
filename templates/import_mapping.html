@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Import Kalisport{% endblock %}
+{% block content %}
+<a class="retour" href="{{ url_for('admin_import') }}">‹ Changer de fichier</a>
+<h1>Vérifier les colonnes</h1>
+<p class="sous">{{ total }} lignes lues. Indique quelle colonne correspond à chaque information.</p>
+
+<form class="carte" method="post" action="{{ url_for('admin_import_valider') }}" style="max-width:640px">
+  {% for key, lib, oblig, aide in [
+      ('nom', 'Nom', true, ''),
+      ('prenom', 'Prénom', false, ''),
+      ('naissance', 'Date de naissance', false, 'Conseillé : évite de confondre deux homonymes.'),
+      ('cours', 'Cours / groupe', true, 'Si une cellule contient plusieurs cours, sépare-les par « ; ».')] %}
+  <div class="champ">
+    <label for="m-{{ key }}">{{ lib }}{% if oblig %} *{% endif %}</label>
+    <select id="m-{{ key }}" name="{{ key }}" {% if oblig %}required{% endif %}>
+      <option value="">{{ '— Choisir —' if oblig else '— Aucune —' }}</option>
+      {% for h in headers %}<option value="{{ loop.index0 }}" {% if mapping[key] == loop.index0 %}selected{% endif %}>{{ h }}</option>{% endfor %}
+    </select>
+    {% if aide %}<div class="aide">{{ aide }}</div>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="champ"><label style="display:flex;gap:.5rem;align-items:flex-start;font-weight:500">
+    <input type="checkbox" name="desactiver_absents" value="1" style="margin-top:.35rem">
+    <span>Passer en inactif les gymnastes qui ne sont plus dans ce fichier <span class="aide" style="display:block">À cocher seulement si le fichier contient tous les adhérents. Leur historique est conservé.</span></span></label></div>
+  <button class="btn" type="submit">Importer</button>
+</form>
+
+<h2>Aperçu</h2>
+<div class="carte tableau-wrap">
+<table>
+  <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for r in apercu %}<tr>{% for v in r %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+</table>
+</div>
+{% endblock %}

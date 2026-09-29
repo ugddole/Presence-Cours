@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Modifier le cours' if c else 'Nouveau cours' }}{% endblock %}
+{% block content %}
+<a class="retour" href="{{ url_for('admin') }}">‹ Cours</a>
+<h1>{{ c.nom if c else 'Nouveau cours' }}</h1>
+<form class="carte" method="post" style="max-width:640px">
+  <div class="champ"><label for="nom">Nom du cours</label>
+    <input id="nom" type="text" name="nom" value="{{ form.get('nom','') }}" required>
+    <div class="aide">Doit être identique au nom du cours dans Kalisport, pour que les imports suivants le retrouvent.</div></div>
+  <div class="grille2">
+    <div class="champ"><label for="jour">Jour</label>
+      <select id="jour" name="jour"><option value="">—</option>
+      {% for j in jours %}<option {% if form.get('jour') == j %}selected{% endif %}>{{ j }}</option>{% endfor %}</select></div>
+    <div class="champ"><label for="horaire">Horaire</label><input id="horaire" type="text" name="horaire" placeholder="18h00 – 19h30" value="{{ form.get('horaire','') }}"></div>
+    <div class="champ"><label for="salle">Salle</label><input id="salle" type="text" name="salle" value="{{ form.get('salle','') }}"></div>
+    <div class="champ"><label for="entraineur">Entraîneur</label><input id="entraineur" type="text" name="entraineur" value="{{ form.get('entraineur','') }}"></div>
+  </div>
+  <div class="champ"><label for="code">Code d'accès</label>
+    <input id="code" type="text" name="code" value="{{ form.get('code','') }}" style="max-width:12rem" inputmode="numeric">
+    <div class="aide">À donner à l'entraîneur. Change-le si le code a circulé : les téléphones devront le ressaisir.</div></div>
+  <div class="champ"><label style="display:flex;gap:.5rem;align-items:center;font-weight:500">
+    <input type="checkbox" name="actif" value="1" {% if form.get('actif') %}checked{% endif %}> Cours actif</label></div>
+  <button class="btn" type="submit">Enregistrer</button>
+</form>
+{% if c %}
+<form method="post" action="{{ url_for('admin_cours_supprimer', id=c.id) }}" style="margin-top:1.5rem"
+      onsubmit="return confirm('Supprimer ce cours et tout son historique de présences ?')">
+  <button class="btn btn-danger" type="submit">Supprimer le cours</button>
+</form>
+{% endif %}
+{% endblock %}
