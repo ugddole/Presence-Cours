@@ -8,7 +8,11 @@
 label.eleve{display:flex;align-items:center;gap:14px;min-height:58px;padding:8px 14px;background:#fff;border:1px solid var(--trait);border-radius:var(--r);cursor:pointer;user-select:none}
 label.eleve input{position:absolute;opacity:0;pointer-events:none}
 .coche{flex:none;width:30px;height:30px;border-radius:8px;border:2px solid var(--trait);display:grid;place-items:center;color:#fff;font-weight:700}
-.qui{font-size:18px}.qui b{font-weight:600}
+.qui{font-size:18px;flex:1;min-width:0}.qui b{font-weight:600}
+.qui small{display:block;font-size:14px;color:var(--doux)}
+.tel{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;text-decoration:none;
+  border:1px solid var(--trait);background:#fff;font-size:20px}
+.tel:active{background:var(--papier)}
 label.eleve:has(input:checked){background:color-mix(in srgb,var(--c) 12%,#fff);border-color:var(--c)}
 label.eleve:has(input:checked) .coche{background:var(--c);border-color:var(--c)}
 label.eleve:has(input:checked) .coche::after{content:"✓"}
@@ -34,7 +38,9 @@ label.eleve:has(input:checked) .coche::after{content:"✓"}
   <div class="liste">
     {% for m in membres %}
     <label class="eleve"><input type="checkbox" name="present" value="{{ m.id }}" {{ 'checked' if m.id in coches }}>
-      <span class="coche" aria-hidden="true"></span><span class="qui"><b>{{ m.nom }}</b> {{ m.prenom }}</span></label>
+      <span class="coche" aria-hidden="true"></span>
+      <span class="qui"><b>{{ m.nom }}</b> {{ m.prenom }}{% if m.telephone %}<small>{{ m.telephone }}</small>{% endif %}</span>
+      {% if m.telephone %}<a class="tel" href="tel:{{ m.telephone|replace(' ', '') }}" aria-label="Appeler {{ m.prenom }} {{ m.nom }}">📞</a>{% endif %}</label>
     {% endfor %}
   </div>
   {% else %}

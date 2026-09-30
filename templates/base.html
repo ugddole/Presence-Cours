@@ -20,7 +20,7 @@ a{color:inherit}
 .haut{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--trait);background:var(--blanc)}
 .haut .marque{font:700 20px/1 var(--titre);text-decoration:none;letter-spacing:.2px}
 .haut .marque span{color:var(--doux);font-weight:500}
-.haut nav{margin-left:auto;display:flex;gap:14px;font-size:14px}
+.haut nav{margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px 14px;font-size:14px}
 .haut nav a{color:var(--doux);text-decoration:none}
 .haut nav a:hover{color:var(--encre);text-decoration:underline}
 main{max-width:760px;margin:0 auto;padding:18px 16px 110px}
@@ -35,7 +35,7 @@ h2{font:600 22px/1.15 var(--titre);margin:26px 0 10px}
 .btn.clair{background:var(--blanc);color:var(--encre);border-color:var(--trait)}
 .btn.petit{min-height:34px;padding:0 12px;font-size:14px}
 .btn:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,label.eleve:focus-within{outline:3px solid #6A8FE0;outline-offset:2px}
-input[type=text],input[type=password],input[type=date],textarea,select{font:16px var(--texte);padding:10px 12px;border:1px solid var(--trait);border-radius:var(--r);background:#fff;width:100%;color:var(--encre)}
+input[type=text],input[type=password],input[type=date],input[type=tel],textarea,select{font:16px var(--texte);padding:10px 12px;border:1px solid var(--trait);border-radius:var(--r);background:#fff;width:100%;color:var(--encre)}
 textarea{min-height:130px}
 label.champ{display:block;font-weight:600;margin:12px 0 6px}
 .aide{color:var(--doux);font-size:14px}
