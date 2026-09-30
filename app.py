@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import secrets
 import time
 import unicodedata
@@ -20,6 +21,7 @@ from zoneinfo import ZoneInfo
 from flask import (Flask, Response, abort, flash, redirect, render_template,
                    request, session, url_for)
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect as sa_inspect, text as sa_text
 
 # ------------------------------------------------------------------ config
 TZ = ZoneInfo("Europe/Paris")
@@ -55,6 +57,7 @@ class Membre(db.Model):
     groupe = db.Column(db.String(300), index=True, nullable=False)
     nom = db.Column(db.String(150), nullable=False)
     prenom = db.Column(db.String(150), default="")
+    telephone = db.Column(db.String(40), default="")
 
 
 class Appel(db.Model):
@@ -90,6 +93,10 @@ class Cache(db.Model):
 
 with app.app_context():
     db.create_all()
+    # Migration douce : ajoute la colonne téléphone aux bases déjà existantes
+    if "telephone" not in [c["name"] for c in sa_inspect(db.engine).get_columns("membre")]:
+        with db.engine.begin() as cx:
+            cx.execute(sa_text("ALTER TABLE membre ADD COLUMN telephone VARCHAR(40) DEFAULT ''"))
 
 
 # ------------------------------------------------------------------ outils
@@ -108,6 +115,23 @@ def gid(cle):
 
 def cle_personne(nom, prenom):
     return norm(nom) + "|" + norm(prenom)
+
+
+def format_tel(v):
+    """Normalise un numéro : '612345678', '+33 6 12…', '0612345678.0' -> '06 12 34 56 78'."""
+    brut = str(v or "").strip()
+    if brut.endswith(".0"):
+        brut = brut[:-2]
+    chiffres = "".join(c for c in brut if c.isdigit())
+    if chiffres.startswith("0033"):
+        chiffres = "0" + chiffres[4:]
+    elif chiffres.startswith("33") and len(chiffres) == 11:
+        chiffres = "0" + chiffres[2:]
+    elif len(chiffres) == 9 and not chiffres.startswith("0"):
+        chiffres = "0" + chiffres  # zéro perdu par Excel
+    if len(chiffres) == 10 and chiffres.startswith("0"):
+        return " ".join(chiffres[i:i + 2] for i in range(0, 10, 2))
+    return brut[:40]
 
 
 def maintenant():
@@ -386,22 +410,54 @@ def admin_accueil():
     return render_template("admin.html", groupes=gs, erreur_planning=_planning["erreur"])
 
 
-def _lire_fichier(f):
-    """Renvoie une liste de lignes (listes de cellules texte)."""
+def _lire_feuilles(f):
+    """Renvoie [(nom_onglet, lignes)] ; un fichier CSV/texte donne un seul onglet sans nom."""
     nom = (f.filename or "").lower()
     contenu = f.read()
-    if nom.endswith((".xlsx", ".xlsm")):
+    if contenu[:4] == b"\xd0\xcf\x11\xe0" or nom.endswith(".xls"):
+        # Excel 97-2003 (.xls), format des exports Kalisport
+        import xlrd
+        wb = xlrd.open_workbook(file_contents=contenu)
+        return [(sh.name, [["" if v is None else str(v).strip() for v in sh.row_values(r)]
+                           for r in range(sh.nrows)])
+                for sh in wb.sheets()]
+    if contenu[:2] == b"PK" or nom.endswith((".xlsx", ".xlsm")):
         from openpyxl import load_workbook
         wb = load_workbook(io.BytesIO(contenu), read_only=True, data_only=True)
-        return [["" if v is None else str(v).strip() for v in row]
-                for row in wb.active.iter_rows(values_only=True)]
+        return [(ws.title, [["" if v is None else str(v).strip() for v in row]
+                            for row in ws.iter_rows(values_only=True)])
+                for ws in wb.worksheets]
+    texte = ""
     for enc in ("utf-8-sig", "cp1252"):
         try:
             texte = contenu.decode(enc)
             break
         except UnicodeDecodeError:
             continue
-    return _lire_texte(texte)
+    return [("", _lire_texte(texte))]
+
+
+def compact(s):
+    """Clé de comparaison tolérante : sans accents, espaces, tirets ni ponctuation."""
+    return re.sub(r"[^a-z0-9]", "", norm(s))
+
+
+def _trouver_groupe(texte, gs):
+    """Associe un nom de cours (colonne ou onglet) à un cours du planning."""
+    k = compact(texte)
+    if not k:
+        return None
+    for g in gs:
+        if compact(g["label"]) == k:
+            return g
+    meme = [g for g in gs if compact(g["creneaux"][0]["intitule"]) == k]
+    if len(meme) == 1:
+        return meme[0]
+    if len(str(texte)) >= 28:  # nom d'onglet tronqué par Excel (31 caractères max)
+        debut = [g for g in gs if compact(g["label"]).startswith(k)]
+        if len(debut) == 1:
+            return debut[0]
+    return None
 
 
 def _lire_texte(texte):
@@ -415,21 +471,33 @@ def _lire_texte(texte):
 
 
 def _colonnes(lignes):
-    """Repère les colonnes nom / prénom / cours ; sinon nom=1re, prénom=2e."""
+    """Repère les colonnes nom / prénom / cours / téléphone ;
+    sinon nom=1re, prénom=2e, téléphone=3e."""
     if not lignes:
         return [], {}
     entete = [norm(x) for x in lignes[0]]
     idx = {}
+    tels = [i for i, h in enumerate(entete)
+            if any(k in h for k in ("tel", "portable", "mobile", "gsm"))]
+    if tels:
+        # on préfère un portable s'il y a plusieurs colonnes téléphone
+        idx["tel"] = next((i for i in tels if any(k in entete[i] for k in ("portable", "mobile", "gsm"))),
+                          tels[0])
     for i, h in enumerate(entete):
+        if i in tels:
+            continue
         if "prenom" in h and "prenom" not in idx:
             idx["prenom"] = i
-        elif h.startswith("nom") and "nom" not in idx:
+        elif (h in ("nom", "noms") or re.match(r"nom\W", h)) and "nom" not in idx:
             idx["nom"] = i
         elif any(k in h for k in ("cours", "groupe", "activite", "section")) and "cours" not in idx:
             idx["cours"] = i
     if "nom" in idx:
         return lignes[1:], idx
-    return lignes, {"nom": 0, "prenom": 1}
+    idx = {"nom": 0, "prenom": 1}
+    if any(len(r) > 2 for r in lignes):
+        idx["tel"] = 2
+    return lignes, idx
 
 
 def _personnes(lignes, idx):
@@ -439,7 +507,8 @@ def _personnes(lignes, idx):
         prenom = r[idx["prenom"]].strip() if "prenom" in idx and len(r) > idx["prenom"] else ""
         if nom:
             cours = r[idx["cours"]].strip() if "cours" in idx and len(r) > idx["cours"] else ""
-            res.append((nom, prenom, cours))
+            tel = format_tel(r[idx["tel"]]) if "tel" in idx and len(r) > idx["tel"] else ""
+            res.append((nom, prenom, cours, tel))
     return res
 
 
@@ -447,13 +516,15 @@ def _enregistrer_liste(cle, personnes, remplacer):
     existants = Membre.query.filter_by(groupe=cle).all()
     par_cle = {cle_personne(m.nom, m.prenom): m for m in existants}
     voulus = {}
-    for nom, prenom, _ in personnes:
-        voulus.setdefault(cle_personne(nom, prenom), (nom, prenom))
+    for nom, prenom, _, tel in personnes:
+        voulus.setdefault(cle_personne(nom, prenom), (nom, prenom, tel))
     ajout = 0
-    for k, (nom, prenom) in voulus.items():
+    for k, (nom, prenom, tel) in voulus.items():
         if k not in par_cle:
-            db.session.add(Membre(groupe=cle, nom=nom, prenom=prenom))
+            db.session.add(Membre(groupe=cle, nom=nom, prenom=prenom, telephone=tel))
             ajout += 1
+        elif tel:
+            par_cle[k].telephone = tel  # met à jour le numéro d'un adhérent déjà inscrit
     retrait = 0
     if remplacer:
         for k, m in par_cle.items():
@@ -474,19 +545,39 @@ def admin_groupe(g):
         action = request.form.get("action")
         if action == "importer":
             f = request.files.get("fichier")
-            lignes = _lire_fichier(f) if f and f.filename else _lire_texte(request.form.get("texte", ""))
-            lignes, idx = _colonnes(lignes)
-            personnes = _personnes(lignes, idx)
-            if not personnes:
-                flash("Aucun nom trouvé. Collez une personne par ligne (nom, prénom) ou choisissez un fichier.", "err")
+            personnes, onglets = None, []
+            if f and f.filename:
+                feuilles = _lire_feuilles(f)
+                onglets = [n for n, _ in feuilles]
+                if len(feuilles) == 1:
+                    lignes = feuilles[0][1]
+                else:  # classeur à plusieurs onglets : on prend celui de ce cours
+                    lignes = next((l for n, l in feuilles if _trouver_groupe(n, [grp])), None)
+            else:
+                lignes = _lire_texte(request.form.get("texte", ""))
+            if lignes is not None:
+                personnes = _personnes(*_colonnes(lignes))
+            if lignes is None:
+                flash(f"Aucun onglet du fichier ne correspond à « {grp['label']} ». "
+                      f"Onglets trouvés : {', '.join(onglets)}. Renommez l'onglet comme le cours.", "err")
+            elif not personnes:
+                flash("Aucun nom trouvé. Collez une personne par ligne (nom, prénom, téléphone) "
+                      "ou choisissez un fichier.", "err")
             else:
                 a, r = _enregistrer_liste(grp["cle"], personnes, request.form.get("mode") == "remplacer")
                 flash(f"Liste mise à jour : {a} ajout(s), {r} retrait(s).")
         elif action == "ajouter":
             nom = request.form.get("nom", "").strip()
             if nom:
-                _enregistrer_liste(grp["cle"], [(nom, request.form.get("prenom", "").strip(), "")], False)
+                _enregistrer_liste(grp["cle"], [(nom, request.form.get("prenom", "").strip(), "",
+                                                 format_tel(request.form.get("telephone", "")))], False)
                 flash("Adhérent ajouté.")
+        elif action == "telephone":
+            m = db.session.get(Membre, int(request.form.get("id", 0)))
+            if m and m.groupe == grp["cle"]:
+                m.telephone = format_tel(request.form.get("telephone", ""))
+                db.session.commit()
+                flash(f"Téléphone de {m.nom} {m.prenom} mis à jour.")
         elif action == "retirer":
             m = db.session.get(Membre, int(request.form.get("id", 0)))
             if m and m.groupe == grp["cle"]:
@@ -518,30 +609,38 @@ def admin_groupe(g):
 @app.route("/admin/import", methods=["POST"])
 @admin
 def admin_import():
-    """Import d'un seul fichier contenant une colonne cours/groupe."""
+    """Import global : soit une colonne cours/groupe, soit un onglet par cours
+    (export Kalisport : onglet = cours, lignes = nom, prénom, téléphone)."""
     f = request.files.get("fichier")
     if not f or not f.filename:
         flash("Choisissez un fichier.", "err")
         return redirect(url_for("admin_accueil"))
-    lignes, idx = _colonnes(_lire_fichier(f))
-    if "cours" not in idx:
-        flash("Colonne « cours » ou « groupe » introuvable. Pour un fichier sans cette colonne, "
-              "importez-le depuis la page du cours.", "err")
+    try:
+        feuilles = _lire_feuilles(f)
+    except Exception as e:
+        app.logger.warning("Fichier illisible : %s", e)
+        flash("Fichier illisible. Enregistrez-le en .xlsx, .xls ou .csv et réessayez.", "err")
         return redirect(url_for("admin_accueil"))
     gs = groupes()
-    par_label = {norm(g["label"]): g for g in gs}
-    par_intitule = {}
-    for g in gs:
-        par_intitule.setdefault(norm(g["creneaux"][0]["intitule"]), []).append(g)
     lots, inconnus = {}, {}
-    for nom, prenom, cours in _personnes(lignes, idx):
-        g = par_label.get(norm(cours))
-        if not g and len(par_intitule.get(norm(cours), [])) == 1:
-            g = par_intitule[norm(cours)][0]
-        if g:
-            lots.setdefault(g["cle"], []).append((nom, prenom, cours))
-        else:
-            inconnus[cours or "(vide)"] = inconnus.get(cours or "(vide)", 0) + 1
+    for onglet, brut in feuilles:
+        lignes, idx = _colonnes(brut)
+        personnes = _personnes(lignes, idx)
+        if not personnes:
+            continue
+        if "cours" in idx:  # une colonne indique le cours de chaque ligne
+            for p in personnes:
+                g = _trouver_groupe(p[2], gs)
+                if g:
+                    lots.setdefault(g["cle"], []).append(p)
+                else:
+                    inconnus[p[2] or "(vide)"] = inconnus.get(p[2] or "(vide)", 0) + 1
+        else:  # sinon, c'est le nom de l'onglet qui donne le cours
+            g = _trouver_groupe(onglet, gs)
+            if g:
+                lots.setdefault(g["cle"], []).extend(personnes)
+            else:
+                inconnus[onglet or "(fichier sans colonne cours)"] = len(personnes)
     total = 0
     for cle, personnes in lots.items():
         total += _enregistrer_liste(cle, personnes, request.form.get("mode") == "remplacer")[0]
@@ -549,7 +648,8 @@ def admin_import():
     if inconnus:
         detail = ", ".join(f"« {k} » ({v})" for k, v in sorted(inconnus.items()))
         flash("Cours non reconnus dans le planning, lignes ignorées : " + detail +
-              ". Renommez-les comme dans le planning, ou importez ces listes depuis la page du cours.", "err")
+              ". Renommez l'onglet (ou la valeur de la colonne cours) exactement comme le cours "
+              "dans le planning, puis réimportez.", "err")
     return redirect(url_for("admin_accueil"))
 
 
