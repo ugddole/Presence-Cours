@@ -82,6 +82,7 @@ class Presence(db.Model):
     nom = db.Column(db.String(150), nullable=False)
     prenom = db.Column(db.String(150), default="")
     present = db.Column(db.Boolean, default=False)
+    excuse = db.Column(db.Boolean, default=False)
     essai = db.Column(db.Boolean, default=False)
 
 
@@ -97,6 +98,10 @@ with app.app_context():
     if "telephone" not in [c["name"] for c in sa_inspect(db.engine).get_columns("membre")]:
         with db.engine.begin() as cx:
             cx.execute(sa_text("ALTER TABLE membre ADD COLUMN telephone VARCHAR(40) DEFAULT ''"))
+    # … et la colonne « excusé » aux présences
+    if "excuse" not in [c["name"] for c in sa_inspect(db.engine).get_columns("presence")]:
+        with db.engine.begin() as cx:
+            cx.execute(sa_text("ALTER TABLE presence ADD COLUMN excuse BOOLEAN DEFAULT FALSE"))
 
 
 # ------------------------------------------------------------------ outils
@@ -359,6 +364,7 @@ def appel(course_id):
 
     if request.method == "POST":
         presents = set(request.form.getlist("present"))
+        excuses = set(request.form.getlist("excuse")) - presents  # « présent » l'emporte
         if not existant:
             existant = Appel(course_id=c["id"], jour_date=jour)
             db.session.add(existant)
@@ -369,7 +375,8 @@ def appel(course_id):
         existant.presences.clear()
         for m in membres:
             existant.presences.append(Presence(nom=m.nom, prenom=m.prenom,
-                                               present=str(m.id) in presents))
+                                               present=str(m.id) in presents,
+                                               excuse=str(m.id) in excuses))
         anciens_essais = request.form.getlist("essai_garde")
         nouveaux = [x.strip() for x in request.form.get("essais", "").replace(";", ",").split(",")]
         for n in anciens_essais + nouveaux:
@@ -377,17 +384,24 @@ def appel(course_id):
                 existant.presences.append(Presence(nom=n.strip(), present=True, essai=True))
         db.session.commit()
         nb = sum(p.present for p in existant.presences)
-        flash(f"Appel enregistré : {nb} présent{'s' if nb > 1 else ''} sur {len(existant.presences)}.")
+        nb_exc = sum(bool(p.excuse) for p in existant.presences)
+        flash(f"Appel enregistré : {nb} présent{'s' if nb > 1 else ''} sur {len(existant.presences)}"
+              + (f", {nb_exc} excusé{'s' if nb_exc > 1 else ''}" if nb_exc else "") + ".")
         return redirect(url_for("accueil", d=jour.isoformat()) if jour != maintenant().date()
                         else url_for("accueil"))
 
-    coches, essais = set(), []
+    coches, excuses, essais = set(), set(), []
     if existant:
-        deja = {cle_personne(p.nom, p.prenom): p.present for p in existant.presences if not p.essai}
-        coches = {m.id for m in membres if deja.get(cle_personne(m.nom, m.prenom))}
+        deja = {cle_personne(p.nom, p.prenom): p for p in existant.presences if not p.essai}
+        for m in membres:
+            p = deja.get(cle_personne(m.nom, m.prenom))
+            if p and p.present:
+                coches.add(m.id)
+            elif p and p.excuse:
+                excuses.add(m.id)
         essais = [p.nom for p in existant.presences if p.essai]
     return render_template("appel.html", c=c, jour=jour, membres=membres, coches=coches,
-                           essais=essais, existant=existant)
+                           excuses=excuses, essais=essais, existant=existant)
 
 
 # ------------------------------------------------------------------ admin
@@ -592,16 +606,18 @@ def admin_groupe(g):
     grille = {}
     for a in appels:
         for p in a.presences:
-            grille[(cle_personne(p.nom, p.prenom), a.id)] = p.present
+            grille[(cle_personne(p.nom, p.prenom), a.id)] = (
+                "present" if p.present else "excuse" if p.excuse else "absent")
     tous_appels = Appel.query.filter_by(groupe=grp["cle"]).all()
     totaux = {}
     for a in tous_appels:
         for p in a.presences:
-            t = totaux.setdefault(cle_personne(p.nom, p.prenom), [0, 0])
-            t[0] += p.present
+            t = totaux.setdefault(cle_personne(p.nom, p.prenom), [0, 0, 0])  # présent, séances, excusé
+            t[0] += bool(p.present)
             t[1] += 1
+            t[2] += bool(p.excuse) and not p.present
     lignes = [{"m": m, "k": cle_personne(m.nom, m.prenom),
-               "total": totaux.get(cle_personne(m.nom, m.prenom), [0, 0])} for m in membres]
+               "total": totaux.get(cle_personne(m.nom, m.prenom), [0, 0, 0])} for m in membres]
     return render_template("groupe.html", grp=grp, lignes=lignes, appels=appels, grille=grille,
                            nb_appels=len(tous_appels))
 
@@ -665,14 +681,86 @@ def admin_export():
     out = io.StringIO()
     w = csv.writer(out, delimiter=";")
     w.writerow(["Date", "Jour", "Horaire", "Cours", "Précision", "Lieu", "Appel fait par",
-                "Nom", "Prénom", "Présent", "Essai"])
+                "Nom", "Prénom", "Présent", "Excusé", "Essai"])
     for a in q.order_by(Appel.jour_date, Appel.horaire).all():
         for p in sorted(a.presences, key=lambda p: (norm(p.nom), norm(p.prenom))):
             w.writerow([a.jour_date.strftime("%d/%m/%Y"), JOURS[a.jour_date.weekday()], a.horaire,
                         a.intitule, a.precision, a.lieu, a.fait_par, p.nom, p.prenom,
-                        "oui" if p.present else "non", "oui" if p.essai else ""])
+                        "oui" if p.present else "non", "oui" if p.excuse else "",
+                        "oui" if p.essai else ""])
     return Response("\ufeff" + out.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": "attachment; filename=presences.csv"})
+
+
+def _periode():
+    """Filtre optionnel ?du=AAAA-MM-JJ&au=AAAA-MM-JJ."""
+    res = []
+    for k in ("du", "au"):
+        try:
+            res.append(date.fromisoformat(request.args.get(k, "")))
+        except ValueError:
+            res.append(None)
+    return res
+
+
+@app.route("/admin/export.xlsx")
+@admin
+def admin_export_xlsx():
+    """Classeur Excel : un onglet par cours, une ligne par adhérent, une colonne par séance."""
+    from export_presences import construire_classeur
+
+    q = Appel.query
+    g = request.args.get("g")
+    if g:
+        grp = groupe_par_gid(g)
+        if grp:
+            q = q.filter_by(groupe=grp["cle"])
+    du, au = _periode()
+    if du:
+        q = q.filter(Appel.jour_date >= du)
+    if au:
+        q = q.filter(Appel.jour_date <= au)
+    appels = q.order_by(Appel.jour_date, Appel.horaire).all()
+
+    infos = {x["cle"]: x for x in groupes()}
+    par_groupe = {}
+    for a in appels:
+        par_groupe.setdefault(a.groupe, []).append(a)
+
+    cours = []
+    for cle, liste in par_groupe.items():
+        info = infos.get(cle)
+        label = info["label"] if info else (liste[0].intitule or "Cours") + (
+            f" – {liste[0].precision}" if liste[0].precision else "")
+        # Deux séances le même jour (deux créneaux) : on précise l'horaire dans l'en-tête
+        par_jour = {}
+        for a in liste:
+            par_jour[a.jour_date] = par_jour.get(a.jour_date, 0) + 1
+        seances = [{"cle": a.id, "date": a.jour_date,
+                    "horaire": a.horaire if par_jour[a.jour_date] > 1 else ""} for a in liste]
+
+        lignes = {}
+        # adhérents actuellement inscrits (même s'ils n'apparaissent dans aucun appel)
+        for m in Membre.query.filter_by(groupe=cle).all():
+            lignes[cle_personne(m.nom, m.prenom)] = {"nom": m.nom, "prenom": m.prenom,
+                                                     "essai": False, "statuts": {}}
+        for a in liste:
+            for p in a.presences:
+                k = ("essai|" if p.essai else "") + cle_personne(p.nom, p.prenom)
+                ligne = lignes.setdefault(k, {"nom": p.nom, "prenom": p.prenom,
+                                              "essai": p.essai, "statuts": {}})
+                ligne["statuts"][a.id] = ("present" if p.present
+                                          else "excuse" if p.excuse else "absent")
+        cours.append({"label": label, "couleur": info["couleur"] if info else None,
+                      "seances": seances, "lignes": list(lignes.values())})
+
+    buf = io.BytesIO()
+    construire_classeur(cours).save(buf)
+    buf.seek(0)
+    nom = "presences-ugd" + (f"-{du:%Y%m%d}" if du else "") + (f"-{au:%Y%m%d}" if au else "") + ".xlsx"
+    return Response(buf.getvalue(),
+                    mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename={nom}"})
 
 
 # ------------------------------------------------------------------ erreurs
