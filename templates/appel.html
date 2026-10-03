@@ -5,17 +5,28 @@
 .tete h1{margin:0}
 .outils{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
 .liste{display:grid;gap:8px;margin:0 0 20px}
-label.eleve{display:flex;align-items:center;gap:14px;min-height:58px;padding:8px 14px;background:#fff;border:1px solid var(--trait);border-radius:var(--r);cursor:pointer;user-select:none}
-label.eleve input{position:absolute;opacity:0;pointer-events:none}
+.eleve{display:flex;align-items:center;gap:10px;min-height:58px;padding:8px 14px;background:#fff;border:1px solid var(--trait);border-radius:var(--r);user-select:none;
+  --ok:#2e7d32;--exc:#ef8a00}
+.eleve input{position:absolute;opacity:0;pointer-events:none}
+.eleve .pres{display:flex;align-items:center;gap:14px;flex:1;min-width:0;cursor:pointer;align-self:stretch}
 .coche{flex:none;width:30px;height:30px;border-radius:8px;border:2px solid var(--trait);display:grid;place-items:center;color:#fff;font-weight:700}
 .qui{font-size:18px;flex:1;min-width:0}.qui b{font-weight:600}
 .qui small{display:block;font-size:14px;color:var(--doux)}
 .tel{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;text-decoration:none;
   border:1px solid var(--trait);background:#fff;font-size:20px}
 .tel:active{background:var(--papier)}
-label.eleve:has(input:checked){background:color-mix(in srgb,var(--c) 12%,#fff);border-color:var(--c)}
-label.eleve:has(input:checked) .coche{background:var(--c);border-color:var(--c)}
-label.eleve:has(input:checked) .coche::after{content:"✓"}
+/* Excusé : petite case orange */
+.exc{flex:none;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--trait);border-radius:999px;font-size:14px;color:var(--doux);cursor:pointer}
+.exc .mini{width:18px;height:18px;border-radius:5px;border:2px solid var(--exc);display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700}
+.exc:has(input:checked){border-color:var(--exc);color:var(--exc);background:#fff4e5}
+.exc:has(input:checked) .mini{background:var(--exc)}
+.exc:has(input:checked) .mini::after{content:"✓"}
+/* Présent : vert */
+.eleve:has(.pres input:checked){background:#e8f5e9;border-color:var(--ok)}
+.eleve:has(.pres input:checked) .coche{background:var(--ok);border-color:var(--ok)}
+.eleve:has(.pres input:checked) .coche::after{content:"✓"}
+/* Excusé : ligne orangée */
+.eleve:has(.exc input:checked){background:#fff8ee;border-color:var(--exc)}
 .barre{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--trait);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
 .barre div{max-width:760px;margin:0 auto;display:flex;gap:12px;align-items:center}
 .barre .compte{font:700 22px var(--titre);white-space:nowrap}
@@ -37,10 +48,14 @@ label.eleve:has(input:checked) .coche::after{content:"✓"}
   </div>
   <div class="liste">
     {% for m in membres %}
-    <label class="eleve"><input type="checkbox" name="present" value="{{ m.id }}" {{ 'checked' if m.id in coches }}>
-      <span class="coche" aria-hidden="true"></span>
-      <span class="qui"><b>{{ m.nom }}</b> {{ m.prenom }}{% if m.telephone %}<small>{{ m.telephone }}</small>{% endif %}</span>
-      {% if m.telephone %}<a class="tel" href="tel:{{ m.telephone|replace(' ', '') }}" aria-label="Appeler {{ m.prenom }} {{ m.nom }}">📞</a>{% endif %}</label>
+    <div class="eleve">
+      <label class="pres"><input type="checkbox" name="present" value="{{ m.id }}" {{ 'checked' if m.id in coches }}>
+        <span class="coche" aria-hidden="true"></span>
+        <span class="qui"><b>{{ m.nom }}</b> {{ m.prenom }}{% if m.telephone %}<small>{{ m.telephone }}</small>{% endif %}</span></label>
+      {% if m.telephone %}<a class="tel" href="tel:{{ m.telephone|replace(' ', '') }}" aria-label="Appeler {{ m.prenom }} {{ m.nom }}">📞</a>{% endif %}
+      <label class="exc"><input type="checkbox" name="excuse" value="{{ m.id }}" {{ 'checked' if m.id in (excuses or []) }}>
+        <span class="mini" aria-hidden="true"></span>Excusé</label>
+    </div>
     {% endfor %}
   </div>
   {% else %}
@@ -48,8 +63,8 @@ label.eleve:has(input:checked) .coche::after{content:"✓"}
   {% endif %}
 
   {% for e in essais %}
-  <label class="eleve"><input type="checkbox" name="essai_garde" value="{{ e }}" checked>
-    <span class="coche" aria-hidden="true"></span><span class="qui"><b>{{ e }}</b> <span class="aide">(en plus)</span></span></label>
+  <div class="eleve"><label class="pres"><input type="checkbox" name="essai_garde" value="{{ e }}" checked>
+    <span class="coche" aria-hidden="true"></span><span class="qui"><b>{{ e }}</b> <span class="aide">(en plus)</span></span></label></div>
   {% endfor %}
   <label class="champ" for="essais">Personnes en plus (essai, non inscrites)</label>
   <input type="text" id="essais" name="essais" placeholder="Séparez les noms par des virgules">
@@ -63,7 +78,20 @@ label.eleve:has(input:checked) .coche::after{content:"✓"}
 {% block script %}<script>
 const f=document.getElementById('f'),n=document.getElementById('n');
 const maj=()=>n.textContent=f.querySelectorAll('input[name=present]:checked').length;
-f.addEventListener('change',maj);
-document.querySelectorAll('[data-tous]').forEach(b=>b.onclick=()=>{f.querySelectorAll('input[name=present]').forEach(i=>i.checked=b.dataset.tous==='1');maj();});
+// Présent et Excusé s'excluent mutuellement
+f.addEventListener('change',e=>{
+  const i=e.target,ligne=i.closest('.eleve');
+  if(i.checked&&ligne){
+    const autre=i.name==='present'?'excuse':i.name==='excuse'?'present':null;
+    if(autre){const o=ligne.querySelector('input[name='+autre+']');if(o)o.checked=false;}
+  }
+  maj();
+});
+document.querySelectorAll('[data-tous]').forEach(b=>b.onclick=()=>{
+  const oui=b.dataset.tous==='1';
+  f.querySelectorAll('input[name=present]').forEach(i=>i.checked=oui);
+  f.querySelectorAll('input[name=excuse]').forEach(i=>i.checked=false);
+  maj();
+});
 maj();
 </script>{% endblock %}
